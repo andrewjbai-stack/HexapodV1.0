@@ -42,3 +42,7 @@ void Spider::zero_all_legs(){
   legs[4].zero();
   legs[5].zero();
 }
+
+void Spider::strafe(float x, float y, float speed){
+
+}

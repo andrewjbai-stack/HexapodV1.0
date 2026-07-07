@@ -2,7 +2,7 @@
 #define LEG_CONTROLLER_H
 
 #include "servo_controller.h"
-#include "helper.h"
+#include "../lib/helper.h"
 
 
 class legController{
