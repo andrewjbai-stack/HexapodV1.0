@@ -12,6 +12,8 @@ public:
   //Sets pins to servos
   void init(Adafruit_PWMServoDriver* pwm, int pin1, int pin2, int pin3) {
     isMoving_ = false;
+    strafing_ = false;
+    blocked_  = false;
 
     servo3_.init(pwm, pin3);
     servo2_.init(pwm, pin2);
@@ -39,6 +41,17 @@ public:
   void step(float floorHeight, float x, float y);
 
   void zero();
+
+  //Continuously moves the foot along velocity [units/sec, leg space] every tick,
+  //until stopStrafe() is called or the next position becomes unreachable.
+  void strafe(Vec3 velocity);
+
+  //Stops continuous strafing and holds the current position.
+  void stopStrafe();
+
+  //True once a strafe step was rejected because the target was unreachable
+  //(i.e. the leg hit a physical limit). Reset when strafe() is called.
+  bool isBlocked() { return blocked_; }
 
   Vec3 getPosition()  { return currentPosition_; }
 private:
@@ -75,6 +88,11 @@ struct angleInfo{
   float velocity_;
   unsigned long lastTick;
   bool isMoving_;
+
+  //Continuous strafe state
+  Vec3 strafeVelocity_;   //units/sec, leg space
+  bool strafing_;
+  bool blocked_;
 
   Queue<Vec3, 8> positionQueue_;
 

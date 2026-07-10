@@ -23,6 +23,18 @@ void Spider::handle(){
   for (int i = 0; i < 6; i++) {
     legs[i].handle();
   }
+
+  // While strafing, stop the whole robot as soon as any leg hits its
+  // physical limit so the legs stay in sync.
+  if (strafing_) {
+    for (int i = 0; i < 6; i++) {
+      if (legs[i].isBlocked()) {
+        Serial.println("STRAFE STOPPED: a leg reached its physical limit");
+        stop();
+        break;
+      }
+    }
+  }
 }
 
 void Spider::move_all_legs(int x, int y, int z){
@@ -43,12 +55,30 @@ void Spider::zero_all_legs(){
   legs[5].zero();
 }
 
-void Spider::strafe(Vec2 direction, float speed) 
+void Spider::strafe(Vec3 direction, float speed)
 {
-  for(int i = 0; i < 6; i++)  
-  {
-    Vec3 current_pos = legs[i].getPosition();
-    Vec2 movement_vector = direction.rotated(world_to_leg_space_angles[i]);
-    legs[i].moveToStraight(current_pos.x + movement_vector.x, current_pos.y + movement_vector.y, current_pos.z, speed);
+  // A zero direction means "don't move" — treat it as a stop.
+  Vec3 dir = direction.normalized();
+  if (dir.magnitudeSquared() < 1e-6f) {
+    stop();
+    return;
   }
+
+  for(int i = 0; i < 6; i++)
+  {
+    // Rotate the horizontal (x, y) component into this leg's frame; the
+    // vertical (z) component is common to every leg.
+    Vec2 horizontal = Vec2(dir.x, dir.y).rotated(world_to_leg_space_angles[i]);
+    Vec3 leg_velocity = Vec3(horizontal.x, horizontal.y, dir.z) * speed;
+    legs[i].strafe(leg_velocity);
+  }
+  strafing_ = true;
+}
+
+void Spider::stop()
+{
+  for (int i = 0; i < 6; i++) {
+    legs[i].stopStrafe();
+  }
+  strafing_ = false;
 }

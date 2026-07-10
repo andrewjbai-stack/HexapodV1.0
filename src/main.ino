@@ -7,19 +7,26 @@ Spider spider;
 SerialCommander commander;
 
 void onStrafe(CommandArgs& args) {
-  Vec2 vec;
-  vec.x = args.getInt(0);
-  vec.y = args.getInt(1);
-  int speed = args.getInt(2, 50); // defaults to 50 if 3rd arg omitted
+  Vec3 dir;
+  dir.x = args.getInt(0);
+  dir.y = args.getInt(1);
+  dir.z = args.getInt(2, 0);      // vertical component, defaults to 0
+  int speed = args.getInt(3, 50); // defaults to 50 if omitted
 
   Serial.print("STRAFING IN DIRECTION: ");
-  Serial.print(vec.x);
+  Serial.print(dir.x);
   Serial.print(", ");
-  Serial.print(vec.y);
+  Serial.print(dir.y);
+  Serial.print(", ");
+  Serial.print(dir.z);
   Serial.print("  AT SPEED: ");
   Serial.println(speed);
 
-  spider.strafe(vec, speed);
+  spider.strafe(dir, speed);
+}
+void onStop(CommandArgs& args) {
+  Serial.println("STOPPING");
+  spider.stop();
 }
 void onUnknown(CommandArgs& args) {
   Serial.print("Unrecognized command: ");
@@ -34,7 +41,8 @@ void setup() {
     Wire.begin();
     spider.init();
 
-    commander.registerCommand("STRAFE", onStrafe);  // e.g. STRAFE:10,20,1
+    commander.registerCommand("STRAFE", onStrafe);  // e.g. STRAFE:10,20,0,50  (dir x,y,z + speed)
+    commander.registerCommand("STOP", onStop);       // halts an in-progress strafe
     commander.setUnknownCommandCallback(onUnknown);
 
 }

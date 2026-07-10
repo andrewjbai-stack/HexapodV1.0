@@ -31,6 +31,9 @@ class Queue {
         bool isEmpty() const { return count_ == 0; }
         bool isFull()  const { return count_ >= SIZE; }
         int  count()   const { return count_; }
+
+        //Empties the queue
+        void clear() { head_ = 0; tail_ = 0; count_ = 0; }
 };
 //Creates a vector 3 object and has some methods. yessir
 struct Vec3 {
