@@ -3,7 +3,7 @@
 
 #include <Adafruit_PWMServoDriver.h>
 #include "leg_controller.h"
-#include <math.h>
+#include "../lib/helper.h"
 
 class Spider {
 public:
@@ -13,7 +13,7 @@ public:
   // Movement functions
   void move_all_legs(int x, int y, int z);
   void zero_all_legs();
-  void strafe(float x, float y, float speed);
+  void strafe(Vec2 direction, float speed);
   Spider(): boardA(0x40), boardB(0x41){}
   
 private:
@@ -30,6 +30,7 @@ private:
       {  9,    10,   11  }, 
       {  13,    14,  15  }, 
   };
+  const int world_to_leg_space_angles[6] = {120, 60, 0, 300, 240, 180};
 
   // Which PCA9685 board each leg is wired to
   Adafruit_PWMServoDriver* const LEG_BOARD[6] = {

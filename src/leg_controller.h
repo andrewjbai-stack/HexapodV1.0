@@ -20,25 +20,27 @@ public:
     servo2_.setAngleLimits(SERVO_TWO_MIN, SERVO_TWO_MAX);
     servo3_.setAngleLimits(SERVO_THREE_MIN, SERVO_THREE_MAX);
 
-    targetPosition_ = {200, 0, 0};
+    targetPosition_ = {120, 0, -120};
     velocity_ = 0;
     lastTick = millis();
-    currentPosition_ = {200,0,0};
+    currentPosition_ = {120, 0, -120};
 
-    this->moveTo(200,0,0);
+    this->moveTo(120, 0, -120);
   }
 
   //Calls movementHandle and children servo handle()
   void handle();
 
-  //Moves in a straight line to the target position
-  void moveToStraight(float x, float y, float z);
+  //Moves in a straight line to the target position at the given velocity [units/sec]
+  void moveToStraight(float x, float y, float z, float velocity = 50);
 
   //This is just a wrapper for 3 moveToStraight calls
   //It moves it straight up, over to target position, then down to floor
   void step(float floorHeight, float x, float y);
 
   void zero();
+
+  Vec3 getPosition()  { return currentPosition_; }
 private:
 
 //CONSTANTS===========================================

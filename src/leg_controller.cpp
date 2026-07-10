@@ -136,10 +136,10 @@ void legController::handle(){
   this->handleMovement();
 }
 
-void legController::moveToStraight(float x, float y, float z){
+void legController::moveToStraight(float x, float y, float z, float velocity){
   positionQueue_.push({x, y, z});
 
-  velocity_ = 50; //HARDCODED CHANGE LATER
+  velocity_ = velocity;
 }
 
 void legController::step(float floorHeight, float x, float y){
