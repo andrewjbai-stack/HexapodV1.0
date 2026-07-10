@@ -10,14 +10,16 @@ void onStrafe(CommandArgs& args) {
   Vec2 vec;
   vec.x = args.getInt(0);
   vec.y = args.getInt(1);
-  int speed = args.getInt(2, 50); // defaults to 1 if 3rd arg omitted
+  int speed = args.getInt(2, 50); // defaults to 50 if 3rd arg omitted
 
-  Serial.print("GOING TO COORDS: ");
+  Serial.print("STRAFING IN DIRECTION: ");
   Serial.print(vec.x);
   Serial.print(", ");
-  Serial.println(vec.y);
+  Serial.print(vec.y);
+  Serial.print("  AT SPEED: ");
+  Serial.println(speed);
 
-  spider.strafe(vec, 1);
+  spider.strafe(vec, speed);
 }
 void onUnknown(CommandArgs& args) {
   Serial.print("Unrecognized command: ");

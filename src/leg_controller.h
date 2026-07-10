@@ -31,8 +31,8 @@ public:
   //Calls movementHandle and children servo handle()
   void handle();
 
-  //Moves in a straight line to the target position
-  void moveToStraight(float x, float y, float z);
+  //Moves in a straight line to the target position at the given velocity [units/sec]
+  void moveToStraight(float x, float y, float z, float velocity = 50);
 
   //This is just a wrapper for 3 moveToStraight calls
   //It moves it straight up, over to target position, then down to floor

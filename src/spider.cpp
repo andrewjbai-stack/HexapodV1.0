@@ -49,6 +49,6 @@ void Spider::strafe(Vec2 direction, float speed)
   {
     Vec3 current_pos = legs[i].getPosition();
     Vec2 movement_vector = direction.rotated(world_to_leg_space_angles[i]);
-    legs[i].moveToStraight(current_pos.x + movement_vector.x, current_pos.y + movement_vector.y, current_pos.z);
+    legs[i].moveToStraight(current_pos.x + movement_vector.x, current_pos.y + movement_vector.y, current_pos.z, speed);
   }
 }
