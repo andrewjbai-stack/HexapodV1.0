@@ -20,12 +20,12 @@ public:
     servo2_.setAngleLimits(SERVO_TWO_MIN, SERVO_TWO_MAX);
     servo3_.setAngleLimits(SERVO_THREE_MIN, SERVO_THREE_MAX);
 
-    targetPosition_ = {200, 0, 0};
+    targetPosition_ = {120, 0, -120};
     velocity_ = 0;
     lastTick = millis();
-    currentPosition_ = {200,0,0};
+    currentPosition_ = {120, 0, -120};
 
-    this->moveTo(200,0,0);
+    this->moveTo(120, 0, -120);
   }
 
   //Calls movementHandle and children servo handle()
@@ -39,6 +39,8 @@ public:
   void step(float floorHeight, float x, float y);
 
   void zero();
+
+  Vec3 getPosition()  { return currentPosition_; }
 private:
 
 //CONSTANTS===========================================

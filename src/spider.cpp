@@ -43,6 +43,12 @@ void Spider::zero_all_legs(){
   legs[5].zero();
 }
 
-void Spider::strafe(float x, float y, float speed){
-
+void Spider::strafe(Vec2 direction, float speed) 
+{
+  for(int i = 0; i < 6; i++)  
+  {
+    Vec3 current_pos = legs[i].getPosition();
+    Vec2 movement_vector = direction.rotated(world_to_leg_space_angles[i]);
+    legs[i].moveToStraight(current_pos.x + movement_vector.x, current_pos.y + movement_vector.y, current_pos.z);
+  }
 }
