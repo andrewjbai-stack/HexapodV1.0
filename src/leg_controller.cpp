@@ -55,6 +55,27 @@ void legController::handleMovement(){
     float dt = now - lastTick;  // ms since last tick
     lastTick = now;
 
+    // Continuous strafe mode: integrate the foot position along the velocity
+    // vector each tick and hold at the last reachable spot when a limit is hit.
+    if (strafing_) {
+        Vec3 next = currentPosition_ + strafeVelocity_ * (dt / 1000.0f);
+
+        // If the next step is unreachable we've hit a physical limit: stop and
+        // hold position (currentPosition_ is left at the last valid spot).
+        if (!calculateAngles(next.x, next.y, next.z).valid) {
+            blocked_   = true;
+            strafing_  = false;
+            isMoving_  = false;
+            targetPosition_ = currentPosition_;
+            return;
+        }
+
+        currentPosition_ = next;
+        isMoving_ = true;
+        this->moveTo(currentPosition_.x, currentPosition_.y, currentPosition_.z);
+        return;
+    }
+
     // Vector from current position to target
     Vec3 dist = targetPosition_ - currentPosition_;
 
@@ -140,6 +161,24 @@ void legController::moveToStraight(float x, float y, float z, float velocity){
   positionQueue_.push({x, y, z});
 
   velocity_ = velocity;
+}
+
+void legController::strafe(Vec3 velocity){
+  // Drop any queued point-to-point moves and begin continuous motion.
+  positionQueue_.clear();
+  strafeVelocity_ = velocity;
+  strafing_ = true;
+  blocked_  = false;
+  // Reset the clock so the first integration step uses a small dt.
+  lastTick  = millis();
+}
+
+void legController::stopStrafe(){
+  strafing_ = false;
+  isMoving_ = false;
+  // Hold wherever we stopped so normal movement doesn't chase a stale target.
+  targetPosition_ = currentPosition_;
+  positionQueue_.clear();
 }
 
 void legController::step(float floorHeight, float x, float y){

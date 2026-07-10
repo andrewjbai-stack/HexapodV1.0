@@ -13,7 +13,12 @@ public:
   // Movement functions
   void move_all_legs(int x, int y, int z);
   void zero_all_legs();
-  void strafe(Vec2 direction, float speed);
+
+  // Continuously strafe along a world-space direction at the given speed
+  // [units/sec] until stop() is called or a leg hits a physical limit.
+  void strafe(Vec3 direction, float speed);
+  void stop();
+
   Spider(): boardA(0x40), boardB(0x41){}
   
 private:
@@ -40,6 +45,7 @@ private:
 
   legController legs[6];
 
+  bool strafing_ = false;
 
 };
 
