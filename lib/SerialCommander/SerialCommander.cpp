@@ -49,12 +49,12 @@ String CommandArgs::raw() const {
 // ---------------- SerialCommander ----------------
 
 SerialCommander::SerialCommander(Stream& stream, char terminator)
-  : _stream(stream),
-    _terminator(terminator),
-    _buffer(""),
-    _echo(false),
-    _commandCount(0),
-    _unknownCallback(nullptr) {}
+    : _stream(stream),
+      _terminator(terminator),
+      _buffer(""),
+      _echo(false),
+      _commandCount(0),
+      _unknownCallback(nullptr) {}
 
 void SerialCommander::handle() {
   while (_stream.available() > 0) {

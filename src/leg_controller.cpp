@@ -2,122 +2,126 @@
 #include "servo_controller.h"
 
 //======================================
-//PRIVATE METHODS
+// PRIVATE METHODS
 //======================================
-//Calculate angles needed for a specific coordinate. Proof is left as an exercise
-legController::angleInfo legController::calculateAngles(float x, float y, float z){
-    legController::angleInfo result;
-    result.valid = true;
+// Calculate angles needed for a specific coordinate. Proof is left as an exercise
+legController::angleInfo legController::calculateAngles(float x, float y, float z) {
+  legController::angleInfo result;
+  result.valid = true;
 
-    result.theta1 =  atan2(y, x);
+  // Single-precision math throughout: the ESP32 FPU is float-only, so double
+  // ops (pow, atan2, PI literals) are software-emulated and slow. This runs
+  // once per leg per tick, so keep everything in float.
+  result.theta1 = atan2f(y, x);
 
-    float d = sqrt(pow(x, 2) + pow(y, 2)) - BASE_LENGTH;
+  float d = sqrtf(x * x + y * y) - BASE_LENGTH;
 
-    //Angle calculations, I am not explaining any of this in here. 
-    //Ill put a desmos link in the readme
-    float cosTheta3 = (-pow(SHIN_LENGTH, 2) - pow(THIGH_LENGTH, 2) + pow(d, 2) + pow(z, 2)) / (2 * SHIN_LENGTH * THIGH_LENGTH);
+  // Angle calculations, I am not explaining any of this in here.
+  // Ill put a desmos link in the readme
+  float cosTheta3 = (-(SHIN_LENGTH * SHIN_LENGTH) - (THIGH_LENGTH * THIGH_LENGTH) + d * d + z * z) /
+                    (2.0f * SHIN_LENGTH * THIGH_LENGTH);
 
-    // Guard: if out of range, target is unreachable
-    if (cosTheta3 < -1.0f || cosTheta3 > 1.0f) {
-        result.valid = false;
-        return result;
-    }
-
-    result.theta3 = -acos(cosTheta3);
-    result.theta2 = atan2(z, d) - atan2(SHIN_LENGTH * sin(result.theta3),
-                                        THIGH_LENGTH + SHIN_LENGTH * cos(result.theta3));
-
-    //Both are converted into degrees 
-    result.theta1 = (180.0/PI) * (result.theta1) + 90;
-    result.theta2 = 90 - (180.0 / PI)*result.theta2; //it is subtracted from 90 because of how the servo is positioned. 
-    result.theta3 = -(180.0 / PI)*result.theta3;
-
-    if (result.theta1 < 0 || result.theta1 > 180) {
-        result.valid = false;
-    }
-
-    if (result.theta2 < SERVO_TWO_MIN || result.theta2 > SERVO_TWO_MAX) {
-        result.valid = false;
-    }
-
-    if (result.theta3 < SERVO_THREE_MIN || result.theta3 > SERVO_THREE_MAX) {
-        result.valid = false;
-    }
-
+  // Guard: if out of range, target is unreachable
+  if (cosTheta3 < -1.0f || cosTheta3 > 1.0f) {
+    result.valid = false;
     return result;
+  }
+
+  result.theta3 = -acosf(cosTheta3);
+  result.theta2 = atan2f(z, d) - atan2f(SHIN_LENGTH * sinf(result.theta3),
+                                        THIGH_LENGTH + SHIN_LENGTH * cosf(result.theta3));
+
+  // Both are converted into degrees
+  constexpr float RAD2DEG = 180.0f / (float)PI;
+  result.theta1 = RAD2DEG * result.theta1 + 90.0f;
+  result.theta2 =
+      90.0f -
+      RAD2DEG * result.theta2;  // it is subtracted from 90 because of how the servo is positioned.
+  result.theta3 = -RAD2DEG * result.theta3;
+
+  if (result.theta1 < 0 || result.theta1 > 180) {
+    result.valid = false;
+  }
+
+  if (result.theta2 < SERVO_TWO_MIN || result.theta2 > SERVO_TWO_MAX) {
+    result.valid = false;
+  }
+
+  if (result.theta3 < SERVO_THREE_MIN || result.theta3 > SERVO_THREE_MAX) {
+    result.valid = false;
+  }
+
+  return result;
 }
 
-void legController::handleMovement(){
+void legController::handleMovement() {
   // Time stuff
-    unsigned long now = millis();
-    float dt = now - lastTick;  // ms since last tick
-    lastTick = now;
+  unsigned long now = millis();
+  float dt = now - lastTick;  // ms since last tick
+  lastTick = now;
 
-    // Continuous strafe mode: integrate the foot position along the velocity
-    // vector each tick and hold at the last reachable spot when a limit is hit.
-    if (strafing_) {
-        Vec3 next = currentPosition_ + strafeVelocity_ * (dt / 1000.0f);
+  // Continuous strafe mode: integrate the foot position along the velocity
+  // vector each tick and hold at the last reachable spot when a limit is hit.
+  if (strafing_) {
+    Vec3 next = currentPosition_ + strafeVelocity_ * (dt / 1000.0f);
 
-        // If the next step is unreachable we've hit a physical limit: stop and
-        // hold position (currentPosition_ is left at the last valid spot).
-        if (!calculateAngles(next.x, next.y, next.z).valid) {
-            blocked_   = true;
-            strafing_  = false;
-            isMoving_  = false;
-            targetPosition_ = currentPosition_;
-            return;
-        }
-
-        currentPosition_ = next;
-        isMoving_ = true;
-        this->moveTo(currentPosition_.x, currentPosition_.y, currentPosition_.z);
-        return;
+    // If the next step is unreachable we've hit a physical limit: stop and
+    // hold position (currentPosition_ is left at the last valid spot).
+    if (!calculateAngles(next.x, next.y, next.z).valid) {
+      blocked_ = true;
+      strafing_ = false;
+      isMoving_ = false;
+      targetPosition_ = currentPosition_;
+      return;
     }
 
-    // Vector from current position to target
-    Vec3 dist = targetPosition_ - currentPosition_;
-
-    // If already at goal (within tolerance on all axes)
-    if (dist.magnitude() < 0.1f) {  // 0.1 units radius
-        isMoving_ = false;
-        //When the leg isnt moving, check if there are any other positions in the position queue.
-        if(positionQueue_.isEmpty() == false){
-          //This both assigns targetPosition the next position in the queue and removes it.
-          positionQueue_.pop(targetPosition_);
-        }
-        return;
-    }
-    //Set is moving to true since leg isnt at target position
+    currentPosition_ = next;
     isMoving_ = true;
-
-    // Unit vector pointing toward target — replaces your int direction
-    Vec3 direction = dist.normalized();
-
-    // Step current position toward target
-    currentPosition_ = currentPosition_ + direction * (velocity_ * (dt / 1000.0f));
-
-    //Clamps on each axis, depending on direction
-    //ADD MINIMUM AND MAXIMUM BOUNDS FOR EACH AXIS
-    currentPosition_.x = (direction.x > 0)
-        ? constrain(currentPosition_.x, -250, targetPosition_.x)
-        : constrain(currentPosition_.x, targetPosition_.x, 250);
-
-    currentPosition_.y = (direction.y > 0)
-        ? constrain(currentPosition_.y, -250, targetPosition_.y)
-        : constrain(currentPosition_.y, targetPosition_.y, 250);
-
-    currentPosition_.z = (direction.z > 0)
-        ? constrain(currentPosition_.z, -200, targetPosition_.z)
-        : constrain(currentPosition_.z, targetPosition_.z, 200);
-
     this->moveTo(currentPosition_.x, currentPosition_.y, currentPosition_.z);
+    return;
+  }
+
+  // Vector from current position to target
+  Vec3 dist = targetPosition_ - currentPosition_;
+
+  // If already at goal (within tolerance on all axes)
+  if (dist.magnitude() < 0.1f) {  // 0.1 units radius
+    isMoving_ = false;
+    // When the leg isnt moving, check if there are any other positions in the position queue.
+    if (positionQueue_.isEmpty() == false) {
+      // This both assigns targetPosition the next position in the queue and removes it.
+      positionQueue_.pop(targetPosition_);
+    }
+    return;
+  }
+  // Set is moving to true since leg isnt at target position
+  isMoving_ = true;
+
+  // Unit vector pointing toward target — replaces your int direction
+  Vec3 direction = dist.normalized();
+
+  // Step current position toward target
+  currentPosition_ = currentPosition_ + direction * (velocity_ * (dt / 1000.0f));
+
+  // Clamps on each axis, depending on direction
+  // ADD MINIMUM AND MAXIMUM BOUNDS FOR EACH AXIS
+  currentPosition_.x = (direction.x > 0) ? constrain(currentPosition_.x, -250, targetPosition_.x)
+                                         : constrain(currentPosition_.x, targetPosition_.x, 250);
+
+  currentPosition_.y = (direction.y > 0) ? constrain(currentPosition_.y, -250, targetPosition_.y)
+                                         : constrain(currentPosition_.y, targetPosition_.y, 250);
+
+  currentPosition_.z = (direction.z > 0) ? constrain(currentPosition_.z, -200, targetPosition_.z)
+                                         : constrain(currentPosition_.z, targetPosition_.z, 200);
+
+  this->moveTo(currentPosition_.x, currentPosition_.y, currentPosition_.z);
 }
 
-//Move to a specific spot
-void legController::moveTo(float x, float y, float z){
+// Move to a specific spot
+void legController::moveTo(float x, float y, float z) {
   legController::angleInfo targetAngles = legController::calculateAngles(x, y, z);
 
-  //If the angles are invalid skip the command
+  // If the angles are invalid skip the command
   if (!targetAngles.valid) {
     Serial.print("WARNING: Target out of reach. Target = (");
     Serial.print(targetAngles.theta1);
@@ -126,52 +130,50 @@ void legController::moveTo(float x, float y, float z){
     Serial.print(", ");
     Serial.print(targetAngles.theta3);
     Serial.println(")");
-    return; 
+    return;
   }
-  //Distances are calculated in order to scale velocity based on how fast each servo should be moving
+  // Distances are calculated in order to scale velocity based on how fast each servo should be
+  // moving
   float dist1 = abs(targetAngles.theta1 - servo1_.getPosition());
   float dist2 = abs(targetAngles.theta2 - servo2_.getPosition());
   float dist3 = abs(targetAngles.theta3 - servo3_.getPosition());
 
   float maxDist = max({dist1, dist2, dist3});
-  if(maxDist < 0.01f) return;
+  if (maxDist < 0.01f) return;
   servo1_.moveTo(targetAngles.theta1, 60 * (dist1 / maxDist));
   servo2_.moveTo(targetAngles.theta2, 60 * (dist2 / maxDist));
   servo3_.moveTo(targetAngles.theta3, 60 * (dist3 / maxDist));
-    Serial.println(targetAngles.theta1);
-    Serial.println(targetAngles.theta2);
-    Serial.println(targetAngles.theta3);
 }
 //======================================
-//PUBLIC METHODS
+// PUBLIC METHODS
 //======================================
-void legController::handle(){
-  //Send data to servos
+void legController::handle() {
+  // Send data to servos
   servo1_.handle();
   servo2_.handle();
   servo3_.handle();
 
-//Find the positions each tick to move the foot in a straight line
+  // Find the positions each tick to move the foot in a straight line
   this->handleMovement();
 }
 
-void legController::moveToStraight(float x, float y, float z, float velocity){
+void legController::moveToStraight(float x, float y, float z, float velocity) {
   positionQueue_.push({x, y, z});
 
   velocity_ = velocity;
 }
 
-void legController::strafe(Vec3 velocity){
+void legController::strafe(Vec3 velocity) {
   // Drop any queued point-to-point moves and begin continuous motion.
   positionQueue_.clear();
   strafeVelocity_ = velocity;
   strafing_ = true;
-  blocked_  = false;
+  blocked_ = false;
   // Reset the clock so the first integration step uses a small dt.
-  lastTick  = millis();
+  lastTick = millis();
 }
 
-void legController::stopStrafe(){
+void legController::stopStrafe() {
   strafing_ = false;
   isMoving_ = false;
   // Hold wherever we stopped so normal movement doesn't chase a stale target.
@@ -179,18 +181,16 @@ void legController::stopStrafe(){
   positionQueue_.clear();
 }
 
-void legController::step(float floorHeight, float x, float y){
+void legController::step(float floorHeight, float x, float y) {
   moveToStraight(currentPosition_.x, currentPosition_.y, floorHeight + 10);
   moveToStraight(x, y, floorHeight + 10);
   moveToStraight(x, y, floorHeight);
-
 }
 
-void legController::zero(){
-    servo1_.moveTo(90, 50);
-    servo2_.moveTo(90, 50);
-    servo3_.moveTo(90, 50);
+void legController::zero() {
+  servo1_.moveTo(90, 50);
+  servo2_.moveTo(90, 50);
+  servo3_.moveTo(90, 50);
 
-    currentPosition_ = {245.85, 0, 0};
+  currentPosition_ = {245.85, 0, 0};
 }
-
