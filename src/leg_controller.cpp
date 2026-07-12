@@ -30,9 +30,7 @@ legController::angleInfo legController::calculateAngles(float x, float y, float 
     //Both are converted into degrees 
     result.theta1 = (180.0/PI) * (result.theta1) + 90;
     result.theta2 = 90 - (180.0 / PI)*result.theta2; //it is subtracted from 90 because of how the servo is positioned. 
-    result.theta3 = (90-(180.0 / PI)*result.theta3)-15.44;
-    result.theta3 = result.theta3 - 13.3428649261; //Magic number is because leg is curved so 
-                                                    //need to acount for that when placing foot.
+    result.theta3 = -(180.0 / PI)*result.theta3;
 
     if (result.theta1 < 0 || result.theta1 > 180) {
         result.valid = false;

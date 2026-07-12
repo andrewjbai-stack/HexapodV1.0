@@ -28,6 +28,11 @@ void onStop(CommandArgs& args) {
   Serial.println("STOPPING");
   spider.stop();
 }
+void onZero(CommandArgs& args) {
+  Serial.println("ZEROING ALL LEGS");
+  spider.stop();            // cancel any in-progress strafe first
+  spider.zero_all_legs();
+}
 void onUnknown(CommandArgs& args) {
   Serial.print("Unrecognized command: ");
   Serial.println(args.raw());
@@ -43,6 +48,7 @@ void setup() {
 
     commander.registerCommand("STRAFE", onStrafe);  // e.g. STRAFE:10,20,0,50  (dir x,y,z + speed)
     commander.registerCommand("STOP", onStop);       // halts an in-progress strafe
+    commander.registerCommand("ZERO", onZero);        // return all legs to their neutral/home pose
     commander.setUnknownCommandCallback(onUnknown);
 
 }

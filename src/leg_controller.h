@@ -58,7 +58,7 @@ private:
 
 //CONSTANTS===========================================
   //Section lengths [in mm]
-  static constexpr float SHIN_LENGTH = 114.434;
+  static constexpr float SHIN_LENGTH = 123.86;
   static constexpr float THIGH_LENGTH = 87.06;
   static constexpr float BASE_LENGTH = 44.42;
 
